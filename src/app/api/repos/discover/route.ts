@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger'
 import { NextResponse } from 'next/server'
-import { CodeCommitClient, ListRepositoriesCommand, GetRepositoryCommand } from '@aws-sdk/client-codecommit'
+import { CodeCommitClient, ListRepositoriesCommand, BatchGetRepositoriesCommand } from '@aws-sdk/client-codecommit'
 import { dynamoService } from '@/lib/dynamodb'
 import { Repository } from '@/lib/types'
 
@@ -9,56 +9,72 @@ const codecommit = new CodeCommitClient({ region: AWS_REGION })
 
 export async function POST() {
   try {
-    // List all CodeCommit repositories
-    const discovered: Repository[] = []
+    // Step 1: List all repo names (lightweight, no throttling)
+    const repoNames: string[] = []
     let nextToken: string | undefined
 
     do {
-      const listCommand = new ListRepositoriesCommand({
+      const listResponse = await codecommit.send(new ListRepositoriesCommand({
         nextToken,
         sortBy: 'repositoryName',
         order: 'ascending'
-      })
-      const listResponse = await codecommit.send(listCommand)
+      }))
 
       for (const repo of listResponse.repositories || []) {
-        if (!repo.repositoryName) continue
+        if (repo.repositoryName) repoNames.push(repo.repositoryName)
+      }
+      nextToken = listResponse.nextToken
+    } while (nextToken)
 
-        try {
-          const detailCommand = new GetRepositoryCommand({
-            repositoryName: repo.repositoryName
-          })
-          const detailResponse = await codecommit.send(detailCommand)
-          const metadata = detailResponse.repositoryMetadata
+    // Step 2: Batch get details (25 at a time — API limit)
+    const discovered: Repository[] = []
+    for (let i = 0; i < repoNames.length; i += 25) {
+      const batch = repoNames.slice(i, i + 25)
+      try {
+        const batchResponse = await codecommit.send(new BatchGetRepositoriesCommand({
+          repositoryNames: batch
+        }))
 
+        for (const meta of batchResponse.repositories || []) {
           discovered.push({
-            name: repo.repositoryName,
-            url: metadata?.cloneUrlHttp || `codecommit://${repo.repositoryName}`,
+            name: meta.repositoryName || '',
+            url: meta.cloneUrlHttp || `codecommit://${meta.repositoryName}`,
             source: 'CodeCommit',
-            lastCommit: metadata?.lastModifiedDate?.toISOString(),
+            lastCommit: meta.lastModifiedDate?.toISOString(),
             enabled: true,
             status: 'active'
           })
-        } catch (err) {
-          logger.warn('Failed to get repo details:', { repo: repo.repositoryName, error: String(err) })
+        }
+
+        // Also add any that failed to get details
+        for (const err of batchResponse.repositoriesNotFound || []) {
           discovered.push({
-            name: repo.repositoryName,
-            url: `codecommit://${repo.repositoryName}`,
+            name: err,
+            url: `codecommit://${err}`,
+            source: 'CodeCommit',
+            enabled: true,
+            status: 'active'
+          })
+        }
+      } catch (err) {
+        // Fallback: add without details
+        logger.warn('Batch get failed, adding without details:', { batch: batch.join(','), error: String(err) })
+        for (const name of batch) {
+          discovered.push({
+            name,
+            url: `codecommit://${name}`,
             source: 'CodeCommit',
             enabled: true,
             status: 'active'
           })
         }
       }
+    }
 
-      nextToken = listResponse.nextToken
-    } while (nextToken)
-
-    // Get existing repos from DynamoDB
+    // Step 3: Get existing and add new
     const existing = await dynamoService.listRepos()
     const existingNames = new Set(existing.map(r => r.name))
 
-    // Add new repos (don't overwrite existing ones)
     let added = 0
     let skipped = 0
     for (const repo of discovered) {
