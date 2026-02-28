@@ -1,4 +1,4 @@
-import { GitBranch, Clock, Check, X } from 'lucide-react'
+import { GitBranch, Clock, Check, X, Play } from 'lucide-react'
 import { Repository } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -7,22 +7,34 @@ interface RepoCardProps {
   repo: Repository
   onToggle?: (repo: Repository) => void
   onDelete?: (repo: Repository) => void
+  onTrigger?: (repo: Repository) => void
+  triggerPending?: boolean
 }
 
-export function RepoCard({ repo, onToggle, onDelete }: RepoCardProps) {
+export function RepoCard({ repo, onToggle, onDelete, onTrigger, triggerPending }: RepoCardProps) {
   return (
-    <div className="bg-card p-6 rounded-lg border border-border hover:border-primary/50 transition-all">
+    <div className="bg-card p-4 lg:p-6 rounded-lg border border-border hover:border-primary/50 transition-all">
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 bg-primary/10 rounded-lg shrink-0">
             <GitBranch className="h-5 w-5 text-primary" />
           </div>
-          <div>
-            <h3 className="font-semibold">{repo.name}</h3>
+          <div className="min-w-0">
+            <h3 className="font-semibold truncate">{repo.name}</h3>
             <p className="text-sm text-muted-foreground">{repo.source}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 shrink-0">
+          {onTrigger && repo.enabled && (
+            <button
+              onClick={() => onTrigger(repo)}
+              disabled={triggerPending}
+              className="p-2 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+              title="Investigate this repo"
+            >
+              <Play className="h-4 w-4" />
+            </button>
+          )}
           {onToggle && (
             <button
               onClick={() => onToggle(repo)}
@@ -51,12 +63,12 @@ export function RepoCard({ repo, onToggle, onDelete }: RepoCardProps) {
 
       <div className="space-y-2 text-sm">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Clock className="h-4 w-4" />
-          <span>Last analyzed: {repo.lastAnalyzed ? formatDate(repo.lastAnalyzed) : 'Never'}</span>
+          <Clock className="h-4 w-4 shrink-0" />
+          <span className="truncate">Last analyzed: {repo.lastAnalyzed ? formatDate(repo.lastAnalyzed) : 'Never'}</span>
         </div>
         {repo.lastCommit && (
-          <div className="text-xs text-muted-foreground">
-            Last commit: {repo.lastCommit.substring(0, 8)}
+          <div className="text-xs text-muted-foreground truncate">
+            Last commit: {repo.lastCommit.substring(0, 20)}
           </div>
         )}
       </div>
@@ -81,7 +93,7 @@ export function RepoCard({ repo, onToggle, onDelete }: RepoCardProps) {
             rel="noopener noreferrer"
             className="text-xs text-primary hover:underline"
           >
-            View Repository →
+            View →
           </a>
         </div>
       </div>

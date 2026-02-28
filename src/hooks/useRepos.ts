@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Repository } from '@/lib/types'
+import toast from 'react-hot-toast'
 
 export function useRepos() {
   return useQuery({
@@ -63,6 +64,40 @@ export function useDeleteRepo() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['repos'] })
+    }
+  })
+}
+
+export interface DiscoverResult {
+  success: boolean
+  discovered: number
+  added: number
+  skipped: number
+  total: number
+  repositories: string[]
+}
+
+export function useDiscoverRepos() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/repos/discover', {
+        method: 'POST'
+      })
+      if (!response.ok) throw new Error('Failed to discover repositories')
+      return response.json() as Promise<DiscoverResult>
+    },
+    onSuccess: (data) => {
+      if (data.added > 0) {
+        toast.success(`Discovered ${data.discovered} repos, added ${data.added} new`)
+      } else {
+        toast.success(`All ${data.discovered} CodeCommit repos already tracked`)
+      }
+      queryClient.invalidateQueries({ queryKey: ['repos'] })
+    },
+    onError: (error: Error) => {
+      toast.error(`Discovery failed: ${error.message}`)
     }
   })
 }

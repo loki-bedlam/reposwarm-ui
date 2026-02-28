@@ -8,9 +8,12 @@ import {
   GitBranch,
   Zap,
   Settings,
-  Layers
+  Layers,
+  Menu,
+  X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useState, useEffect } from 'react'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
@@ -22,12 +25,35 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
-  return (
-    <div className="flex h-full w-64 flex-col bg-card border-r border-border">
-      <div className="flex h-16 items-center px-6 border-b border-border">
-        <Layers className="h-8 w-8 text-primary" />
-        <span className="ml-3 text-xl font-semibold">RepoSwarm</span>
+  // Close sidebar on route change
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  // Close on escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false)
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [])
+
+  const sidebarContent = (
+    <>
+      <div className="flex h-16 items-center justify-between px-6 border-b border-border">
+        <div className="flex items-center">
+          <Layers className="h-8 w-8 text-primary" />
+          <span className="ml-3 text-xl font-semibold">RepoSwarm</span>
+        </div>
+        <button
+          className="lg:hidden p-1 hover:bg-accent rounded"
+          onClick={() => setMobileOpen(false)}
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navigation.map((item) => {
@@ -52,10 +78,46 @@ export function Sidebar() {
       </nav>
       <div className="border-t border-border p-4">
         <div className="text-xs text-muted-foreground">
-          <div>v1.0.0</div>
-          <div className="mt-1">© 2024 RepoSwarm</div>
+          <div>v2.0.0</div>
+          <div className="mt-1">© 2026 RepoSwarm</div>
         </div>
       </div>
-    </div>
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile hamburger button */}
+      <button
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-card border border-border rounded-lg shadow-lg"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-black/50"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar */}
+      <div
+        className={cn(
+          'lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out flex flex-col',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        {sidebarContent}
+      </div>
+
+      {/* Desktop sidebar */}
+      <div className="hidden lg:flex h-full w-64 flex-col bg-card border-r border-border">
+        {sidebarContent}
+      </div>
+    </>
   )
 }

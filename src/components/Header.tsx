@@ -28,8 +28,8 @@ export function Header() {
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border px-6">
-      <h1 className="text-2xl font-semibold">{getPageTitle()}</h1>
+    <header className="flex h-16 items-center justify-between border-b border-border px-4 lg:px-6">
+      <h1 className="text-xl lg:text-2xl font-semibold pl-10 lg:pl-0">{getPageTitle()}</h1>
       <button
         onClick={handleRefresh}
         className="p-2 hover:bg-accent rounded-lg transition-colors"
