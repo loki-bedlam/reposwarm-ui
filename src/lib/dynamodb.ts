@@ -31,7 +31,7 @@ export class DynamoDBService {
 
       const response = await docClient.send(command)
 
-      return (response.Items || []).map(item => ({
+      const repos = (response.Items || []).map(item => ({
         name: item.repository_name || '',
         url: item.url || '',
         source: item.source || 'GitHub',
@@ -39,8 +39,17 @@ export class DynamoDBService {
         lastCommit: item.lastCommit,
         enabled: item.enabled !== false,
         status: item.status || 'active',
-        architectureDoc: item.architectureDoc
+        architectureDoc: item.architectureDoc,
+        hasDocs: false
       }))
+
+      // Check which repos have wiki results
+      const docsCheck = await this.getReposWithDocs(repos.map(r => r.name))
+      for (const repo of repos) {
+        repo.hasDocs = docsCheck.has(repo.name)
+      }
+
+      return repos
     } catch (error) {
       logger.error('Error listing repos:', { error: String(error) })
       return []
@@ -161,6 +170,40 @@ export class DynamoDBService {
 
     await docClient.send(command)
   }
+  async getReposWithDocs(repoNames: string[]): Promise<Set<string>> {
+    const withDocs = new Set<string>()
+    try {
+      // Scan for _result_ entries and extract unique repo names
+      const command = new ScanCommand({
+        TableName: this.tableName,
+        FilterExpression: 'begins_with(repository_name, :prefix)',
+        ExpressionAttributeValues: {
+          ':prefix': '_result_'
+        },
+        ProjectionExpression: 'repository_name'
+      })
+
+      const response = await docClient.send(command)
+      for (const item of response.Items || []) {
+        const name = item.repository_name as string
+        // _result_{repoName}_{section}_{commit}_{version}
+        const parts = name.replace('_result_', '').split('_')
+        if (parts.length >= 1) {
+          // repo name might contain underscores, so match against known names
+          for (const repoName of repoNames) {
+            if (name.startsWith(`_result_${repoName}_`)) {
+              withDocs.add(repoName)
+              break
+            }
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Error checking docs:', { error: String(error) })
+    }
+    return withDocs
+  }
 }
+
 
 export const dynamoService = new DynamoDBService()

@@ -89,8 +89,17 @@ export function RepoCard({ repo, onToggle, onDelete, onTrigger, triggerPending }
             {repo.status || 'inactive'}
           </span>
           <div className="flex gap-3">
-            <Link href={`/repos/${encodeURIComponent(repo.name)}/wiki`} className="text-xs text-primary hover:underline flex items-center gap-1">
-              <BookOpen className="h-3 w-3" />Wiki
+            <Link
+              href={`/repos/${encodeURIComponent(repo.name)}/wiki`}
+              className={cn(
+                'text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1 transition-colors',
+                repo.hasDocs
+                  ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
+                  : 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20'
+              )}
+            >
+              <BookOpen className="h-3 w-3" />
+              Wiki
             </Link>
             <a href={repo.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:underline">
               Source →

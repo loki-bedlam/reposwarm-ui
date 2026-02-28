@@ -36,6 +36,7 @@ export interface Repository {
   enabled: boolean
   status?: 'active' | 'inactive' | 'error'
   architectureDoc?: string
+  hasDocs?: boolean
 }
 
 export interface TriggerRequest {
