@@ -157,20 +157,20 @@ export default function DashboardPage() {
         <h2 className="text-lg font-semibold mb-4">System Health</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-center gap-3">
-            <div className={`h-3 w-3 rounded-full ${health?.temporal.connected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <div className={`h-3 w-3 rounded-full ${health?.temporal?.connected ? 'bg-green-500' : 'bg-red-500'}`} />
             <div>
               <p className="font-medium">Temporal Server</p>
               <p className="text-sm text-muted-foreground">
-                {health?.temporal.connected ? 'Connected' : 'Disconnected'}
+                {health?.temporal?.connected ? 'Connected' : 'Disconnected'}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className={`h-3 w-3 rounded-full ${health?.worker.connected ? 'bg-green-500' : 'bg-orange-500'}`} />
+            <div className={`h-3 w-3 rounded-full ${health?.worker?.connected ? 'bg-green-500' : 'bg-orange-500'}`} />
             <div>
               <p className="font-medium">Workers</p>
               <p className="text-sm text-muted-foreground">
-                {health?.worker.count || 0} connected
+                {health?.worker?.count || 0} connected
               </p>
             </div>
           </div>
