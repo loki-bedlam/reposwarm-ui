@@ -4,11 +4,12 @@ import { dynamoService } from '@/lib/dynamodb'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { name: string } }
+  { params }: { params: Promise<{ name: string }> }
 ) {
   try {
+    const { name } = await params
     const body = await request.json()
-    const decodedName = decodeURIComponent(params.name)
+    const decodedName = decodeURIComponent(name)
 
     await dynamoService.updateRepo(decodedName, body)
 
@@ -24,10 +25,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { name: string } }
+  { params }: { params: Promise<{ name: string }> }
 ) {
   try {
-    const decodedName = decodeURIComponent(params.name)
+    const { name } = await params
+    const decodedName = decodeURIComponent(name)
 
     await dynamoService.deleteRepo(decodedName)
 

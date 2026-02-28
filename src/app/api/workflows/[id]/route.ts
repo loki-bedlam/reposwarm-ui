@@ -4,13 +4,14 @@ import { temporalClient } from '@/lib/temporal'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const searchParams = request.nextUrl.searchParams
     const runId = searchParams.get('runId') || undefined
 
-    const workflow = await temporalClient.getWorkflow(params.id, runId)
+    const workflow = await temporalClient.getWorkflow(id, runId)
 
     return NextResponse.json(workflow)
   } catch (error) {

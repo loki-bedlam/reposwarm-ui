@@ -4,13 +4,14 @@ import { temporalClient } from '@/lib/temporal'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const { runId, reason } = body
 
-    await temporalClient.terminateWorkflow(params.id, runId, reason)
+    await temporalClient.terminateWorkflow(id, runId, reason)
 
     return NextResponse.json({ success: true })
   } catch (error) {
