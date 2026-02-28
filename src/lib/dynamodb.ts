@@ -18,20 +18,28 @@ export class DynamoDBService {
 
   async listRepos(): Promise<Repository[]> {
     try {
-      const command = new ScanCommand({
-        TableName: this.tableName,
-        FilterExpression: '#sk = :repoMarker',
-        ExpressionAttributeNames: {
-          '#sk': 'analysis_timestamp'
-        },
-        ExpressionAttributeValues: {
-          ':repoMarker': 0
-        }
-      })
+      let allItems: Record<string, any>[] = []
+      let lastKey: Record<string, any> | undefined
 
-      const response = await docClient.send(command)
+      do {
+        const command = new ScanCommand({
+          TableName: this.tableName,
+          FilterExpression: '#sk = :repoMarker',
+          ExpressionAttributeNames: {
+            '#sk': 'analysis_timestamp'
+          },
+          ExpressionAttributeValues: {
+            ':repoMarker': 0
+          },
+          ...(lastKey ? { ExclusiveStartKey: lastKey } : {})
+        })
 
-      const repos = (response.Items || []).map(item => ({
+        const response = await docClient.send(command)
+        allItems = allItems.concat(response.Items || [])
+        lastKey = response.LastEvaluatedKey
+      } while (lastKey)
+
+      const repos = allItems.map(item => ({
         name: item.repository_name || '',
         url: item.url || '',
         source: item.source || 'GitHub',
@@ -173,18 +181,26 @@ export class DynamoDBService {
   async getReposWithDocs(repoNames: string[]): Promise<Set<string>> {
     const withDocs = new Set<string>()
     try {
-      // Scan for _result_ entries and extract unique repo names
-      const command = new ScanCommand({
-        TableName: this.tableName,
-        FilterExpression: 'begins_with(repository_name, :prefix)',
-        ExpressionAttributeValues: {
-          ':prefix': '_result_'
-        },
-        ProjectionExpression: 'repository_name'
-      })
+      let allItems: Record<string, any>[] = []
+      let lastKey: Record<string, any> | undefined
 
-      const response = await docClient.send(command)
-      for (const item of response.Items || []) {
+      do {
+        const command = new ScanCommand({
+          TableName: this.tableName,
+          FilterExpression: 'begins_with(repository_name, :prefix)',
+          ExpressionAttributeValues: {
+            ':prefix': '_result_'
+          },
+          ProjectionExpression: 'repository_name, analysis_timestamp',
+          ...(lastKey ? { ExclusiveStartKey: lastKey } : {})
+        })
+
+        const response = await docClient.send(command)
+        allItems = allItems.concat(response.Items || [])
+        lastKey = response.LastEvaluatedKey
+      } while (lastKey)
+
+      for (const item of allItems) {
         const name = item.repository_name as string
         // _result_{repoName}_{section}_{commit}_{version}
         const parts = name.replace('_result_', '').split('_')

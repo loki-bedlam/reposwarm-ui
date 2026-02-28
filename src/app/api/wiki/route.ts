@@ -15,17 +15,24 @@ const HIGHLIGHT_SECTIONS = ['hl_overview', 'security_check', 'DBs', 'APIs', 'dep
 export async function GET() {
   try {
     // Scan for all _result_ entries
-    const command = new ScanCommand({
-      TableName: TABLE,
-      FilterExpression: 'begins_with(repository_name, :prefix)',
-      ExpressionAttributeValues: {
-        ':prefix': '_result_'
-      },
-      ProjectionExpression: 'repository_name, analysis_timestamp, created_at, step_name'
-    })
+    let items: Record<string, any>[] = []
+    let lastKey: Record<string, any> | undefined
 
-    const response = await docClient.send(command)
-    const items = response.Items || []
+    do {
+      const command = new ScanCommand({
+        TableName: TABLE,
+        FilterExpression: 'begins_with(repository_name, :prefix)',
+        ExpressionAttributeValues: {
+          ':prefix': '_result_'
+        },
+        ProjectionExpression: 'repository_name, analysis_timestamp, created_at, step_name',
+        ...(lastKey ? { ExclusiveStartKey: lastKey } : {})
+      })
+
+      const response = await docClient.send(command)
+      items = items.concat(response.Items || [])
+      lastKey = response.LastEvaluatedKey
+    } while (lastKey)
 
     // Group by repo name
     const repoMap = new Map<string, { sections: Set<string>, lastUpdated: string, highlights: string[] }>()
