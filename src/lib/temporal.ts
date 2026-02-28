@@ -99,7 +99,8 @@ export class TemporalClient {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Temporal-Csrf-Token': 'nocheck'
       },
       body: JSON.stringify({
         reason: reason || 'Terminated via UI'
@@ -121,7 +122,8 @@ export class TemporalClient {
       {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Temporal-Csrf-Token': 'nocheck'
         },
         body: JSON.stringify({
           workflowId,
