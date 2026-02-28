@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { GitBranch, Activity, CheckCircle, XCircle, Zap } from 'lucide-react'
-import { apiFetchJson, apiFetch } from '@/lib/api'
+import { apiFetchJson } from '@/lib/api'
 import { StatsCard } from '@/components/StatsCard'
 import { StatusBadge } from '@/components/StatusBadge'
 import { DataTable } from '@/components/DataTable'
@@ -47,17 +47,13 @@ export default function DashboardPage() {
 
   const { data: health } = useQuery<SystemHealth>({
     queryKey: ['health'],
-    queryFn: async () => {
-      const response = await apiFetch('/health')
-      return response.json()
-    }
+    queryFn: () => apiFetchJson<SystemHealth>('/health')
   })
 
   const { data: recentWorkflows } = useQuery({
     queryKey: ['recent-workflows'],
     queryFn: async () => {
-      const response = await apiFetch('/workflows?pageSize=10')
-      const data = await response.json()
+      const data = await apiFetchJson<{ executions: WorkflowExecution[] }>('/workflows?pageSize=10')
       return data.executions || []
     }
   })
