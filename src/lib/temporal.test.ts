@@ -25,7 +25,7 @@ describe('TemporalClient', () => {
       await client.listWorkflows(25, 'nextToken123')
 
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/namespaces/default/workflow-executions?pageSize=25&nextPageToken=nextToken123'),
+        expect.stringContaining('/api/v1/namespaces/default/workflows?pageSize=25&nextPageToken=nextToken123'),
         expect.any(Object)
       )
     })

@@ -24,8 +24,9 @@ export class TemporalClient {
       ...(nextPageToken && { nextPageToken })
     })
 
+    // Temporal UI proxy uses /workflows for listing (not /workflow-executions)
     const response = await fetch(
-      `${this.baseUrl}/api/v1/namespaces/${this.namespace}/workflow-executions?${params}`,
+      `${this.baseUrl}/api/v1/namespaces/${this.namespace}/workflows?${params}`,
       {
         headers: {
           'Content-Type': 'application/json'
@@ -158,12 +159,19 @@ export class TemporalClient {
 
   async checkHealth(): Promise<boolean> {
     try {
+      // Try system-info first (native HTTP API)
       const response = await fetch(`${this.baseUrl}/api/v1/system-info`, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(5000),
       })
-      return response.ok
+      if (response.ok) return true
+
+      // Fallback: try listing workflows (works through temporal-ui proxy)
+      const fallback = await fetch(
+        `${this.baseUrl}/api/v1/namespaces/${this.namespace}/workflows?pageSize=1`,
+        { headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(5000) }
+      )
+      return fallback.ok
     } catch {
       return false
     }
