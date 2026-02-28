@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { apiFetchJson } from '@/lib/api'
 
 export interface WikiSection {
   id: string
@@ -25,11 +26,7 @@ export interface WikiContent {
 export function useWikiIndex(repo: string) {
   return useQuery({
     queryKey: ['wiki', repo],
-    queryFn: async () => {
-      const response = await fetch(`/api/wiki/${encodeURIComponent(repo)}`)
-      if (!response.ok) throw new Error('Failed to fetch wiki index')
-      return response.json() as Promise<WikiIndex>
-    },
+    queryFn: () => apiFetchJson<WikiIndex>(`/wiki/${encodeURIComponent(repo)}`),
     enabled: !!repo
   })
 }
@@ -37,11 +34,7 @@ export function useWikiIndex(repo: string) {
 export function useWikiSection(repo: string, section: string) {
   return useQuery({
     queryKey: ['wiki', repo, section],
-    queryFn: async () => {
-      const response = await fetch(`/api/wiki/${encodeURIComponent(repo)}/${encodeURIComponent(section)}`)
-      if (!response.ok) throw new Error('Failed to fetch wiki section')
-      return response.json() as Promise<WikiContent>
-    },
+    queryFn: () => apiFetchJson<WikiContent>(`/wiki/${encodeURIComponent(repo)}/${encodeURIComponent(section)}`),
     enabled: !!repo && !!section
   })
 }

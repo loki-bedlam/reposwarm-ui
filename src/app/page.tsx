@@ -2,13 +2,14 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { GitBranch, Activity, CheckCircle, XCircle, Zap } from 'lucide-react'
+import { apiFetchJson, apiFetch } from '@/lib/api'
 import { StatsCard } from '@/components/StatsCard'
 import { StatusBadge } from '@/components/StatusBadge'
 import { DataTable } from '@/components/DataTable'
 import { formatDate, formatDuration } from '@/lib/utils'
 import { useTriggerDaily } from '@/hooks/useTrigger'
 import { useRouter } from 'next/navigation'
-import { DashboardStats, SystemHealth, WorkflowExecution } from '@/lib/types'
+import { DashboardStats, SystemHealth, WorkflowExecution, Repository } from '@/lib/types'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -18,8 +19,8 @@ export default function DashboardPage() {
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const [workflows, repos] = await Promise.all([
-        fetch('/api/workflows?pageSize=100').then(r => r.json()),
-        fetch('/api/repos').then(r => r.json())
+        apiFetchJson<{ executions: WorkflowExecution[] }>('/workflows?pageSize=100'),
+        apiFetchJson<Repository[]>('/repos')
       ])
 
       const today = new Date()
@@ -47,7 +48,7 @@ export default function DashboardPage() {
   const { data: health } = useQuery<SystemHealth>({
     queryKey: ['health'],
     queryFn: async () => {
-      const response = await fetch('/api/health')
+      const response = await apiFetch('/health')
       return response.json()
     }
   })
@@ -55,7 +56,7 @@ export default function DashboardPage() {
   const { data: recentWorkflows } = useQuery({
     queryKey: ['recent-workflows'],
     queryFn: async () => {
-      const response = await fetch('/api/workflows?pageSize=10')
+      const response = await apiFetch('/workflows?pageSize=10')
       const data = await response.json()
       return data.executions || []
     }

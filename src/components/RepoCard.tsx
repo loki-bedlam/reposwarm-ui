@@ -20,7 +20,8 @@ export function RepoCard({ repo, onToggle, onDelete, onTrigger, onCancelWorkflow
   const handleCancel = async () => {
     if (!runningWorkflow) return
     try {
-      const res = await fetch(`/api/workflows/${runningWorkflow.workflowId}/terminate`, {
+      const { apiFetch } = await import('@/lib/api')
+      const res = await apiFetch(`/workflows/${runningWorkflow.workflowId}/terminate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: 'Cancelled from repo card' })

@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from '@/lib/api'
+
 import { useQuery } from '@tanstack/react-query'
 import { Settings, Cpu, GitBranch, Users, ExternalLink } from 'lucide-react'
 import { RepoSwarmConfig, SystemHealth } from '@/lib/types'
@@ -8,7 +10,7 @@ export default function SettingsPage() {
   const { data: config } = useQuery<RepoSwarmConfig>({
     queryKey: ['config'],
     queryFn: async () => {
-      const response = await fetch('/api/config')
+      const response = await apiFetch('/config')
       return response.json()
     }
   })
@@ -16,7 +18,7 @@ export default function SettingsPage() {
   const { data: health } = useQuery<SystemHealth>({
     queryKey: ['health'],
     queryFn: async () => {
-      const response = await fetch('/api/health')
+      const response = await apiFetch('/health')
       return response.json()
     }
   })

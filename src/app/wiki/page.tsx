@@ -20,11 +20,9 @@ export default function WikiBrowsePage() {
   useEffect(() => {
     async function fetchWikiRepos() {
       try {
-        const res = await fetch('/api/wiki')
-        if (res.ok) {
-          const data = await res.json()
-          setRepos(data.repos || [])
-        }
+        const { apiFetchJson } = await import('@/lib/api')
+        const data = await apiFetchJson<{ repos: WikiRepoSummary[] }>('/wiki')
+        setRepos(data.repos || [])
       } catch (err) {
         console.error('Failed to fetch wiki repos:', err)
       } finally {
