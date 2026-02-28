@@ -77,7 +77,7 @@ describe('Health API Route', () => {
     it('should return error status when health check throws', async () => {
       vi.mocked(temporalClient.checkHealth).mockRejectedValue(new Error('Connection failed'))
 
-      // Mock console.error to prevent test output noise
+      // Mock console.error to prevent test output noise (logger.error writes to console.error)
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       const response = await GET()
@@ -97,7 +97,8 @@ describe('Health API Route', () => {
         api: 'error'
       })
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error checking health:', expect.any(Error))
+      // logger.error outputs JSON to console.error
+      expect(consoleErrorSpy).toHaveBeenCalled()
 
       consoleErrorSpy.mockRestore()
     })

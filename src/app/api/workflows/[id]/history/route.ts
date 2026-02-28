@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { temporalClient } from '@/lib/temporal'
 
@@ -13,7 +14,7 @@ export async function GET(
 
     return NextResponse.json(history)
   } catch (error) {
-    console.error('Error getting workflow history:', error)
+    logger.error('Error getting workflow history:', { error: String(error) })
     return NextResponse.json(
       { error: 'Failed to get workflow history' },
       { status: 500 }

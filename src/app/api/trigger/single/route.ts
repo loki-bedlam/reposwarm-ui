@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { temporalClient } from '@/lib/temporal'
 
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       repoName
     })
   } catch (error) {
-    console.error('Error triggering single investigation:', error)
+    logger.error('Error triggering single investigation:', { error: String(error) })
     return NextResponse.json(
       { error: 'Failed to trigger investigation' },
       { status: 500 }

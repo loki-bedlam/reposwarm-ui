@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { dynamoService } from '@/lib/dynamodb'
 
@@ -13,7 +14,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error updating repo:', error)
+    logger.error('Error updating repo:', { error: String(error) })
     return NextResponse.json(
       { error: 'Failed to update repository' },
       { status: 500 }
@@ -32,7 +33,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting repo:', error)
+    logger.error('Error deleting repo:', { error: String(error) })
     return NextResponse.json(
       { error: 'Failed to delete repository' },
       { status: 500 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { dynamoService } from '@/lib/dynamodb'
 import { Repository } from '@/lib/types'
@@ -7,7 +8,7 @@ export async function GET() {
     const repos = await dynamoService.listRepos()
     return NextResponse.json(repos)
   } catch (error) {
-    console.error('Error listing repos:', error)
+    logger.error('Error listing repos:', { error: String(error) })
     return NextResponse.json(
       { error: 'Failed to list repositories' },
       { status: 500 }
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, repo })
   } catch (error) {
-    console.error('Error adding repo:', error)
+    logger.error('Error adding repo:', { error: String(error) })
     return NextResponse.json(
       { error: 'Failed to add repository' },
       { status: 500 }

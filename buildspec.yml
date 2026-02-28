@@ -21,10 +21,13 @@ phases:
       - echo "=== Type checking ==="
       - cd $CODEBUILD_SRC_DIR && npm ci
       - cd $CODEBUILD_SRC_DIR && npx tsc --noEmit
-      - echo "=== Building Docker image ==="
-      - cd $CODEBUILD_SRC_DIR && docker build -t $ECR_REPO:latest -t $ECR_REPO:$IMAGE_TAG .
+      - echo "=== Running tests ==="
+      - cd $CODEBUILD_SRC_DIR && npx vitest run
+      - echo "=== Building Docker image (build $CODEBUILD_BUILD_NUMBER) ==="
+      - cd $CODEBUILD_SRC_DIR && docker build --build-arg BUILD_NUMBER=$CODEBUILD_BUILD_NUMBER -t $ECR_REPO:latest -t $ECR_REPO:$IMAGE_TAG -t $ECR_REPO:build-$CODEBUILD_BUILD_NUMBER .
       - docker push $ECR_REPO:latest
       - docker push $ECR_REPO:$IMAGE_TAG
+      - docker push $ECR_REPO:build-$CODEBUILD_BUILD_NUMBER
   post_build:
     commands:
       - echo "=== Deploying to ECS ==="

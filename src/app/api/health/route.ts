@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextResponse } from 'next/server'
 import { temporalClient } from '@/lib/temporal'
 import { SystemHealth } from '@/lib/types'
@@ -21,7 +22,7 @@ export async function GET() {
 
     return NextResponse.json(health)
   } catch (error) {
-    console.error('Error checking health:', error)
+    logger.error('Error checking health:', { error: String(error) })
     return NextResponse.json(
       {
         temporal: {

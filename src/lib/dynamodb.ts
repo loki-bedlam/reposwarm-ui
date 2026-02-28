@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, ScanCommand, PutCommand, DeleteCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { Repository } from './types'
@@ -41,7 +42,7 @@ export class DynamoDBService {
         architectureDoc: item.architectureDoc
       }))
     } catch (error) {
-      console.error('Error listing repos:', error)
+      logger.error('Error listing repos:', { error: String(error) })
       return []
     }
   }
@@ -73,7 +74,7 @@ export class DynamoDBService {
         architectureDoc: response.Item.architectureDoc
       }
     } catch (error) {
-      console.error('Error getting repo:', error)
+      logger.error('Error getting repo:', { error: String(error) })
       return null
     }
   }
@@ -141,7 +142,7 @@ export class DynamoDBService {
       const response = await docClient.send(command)
       return response.Item?.data || null
     } catch (error) {
-      console.error('Error getting cache entry:', error)
+      logger.error('Error getting cache entry:', { error: String(error) })
       return null
     }
   }

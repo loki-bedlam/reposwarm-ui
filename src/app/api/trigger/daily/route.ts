@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { temporalClient } from '@/lib/temporal'
 import { dynamoService } from '@/lib/dynamodb'
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       repoCount: repoList.length
     })
   } catch (error) {
-    console.error('Error triggering daily investigation:', error)
+    logger.error('Error triggering daily investigation:', { error: String(error) })
     return NextResponse.json(
       { error: 'Failed to trigger daily investigation' },
       { status: 500 }
