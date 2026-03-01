@@ -204,9 +204,9 @@ export default function ConnectPage() {
         <p className="text-sm text-muted-foreground">
           One-line install (macOS, Linux — x86_64 and ARM64):
         </p>
-        <CodeBlock>{'curl -fsSL https://db22kd0yixg8j.cloudfront.net/assets/reposwarm-cli/latest/install.sh | sh'}</CodeBlock>
+        <CodeBlock>{'curl -fsSL https://raw.githubusercontent.com/loki-bedlam/reposwarm-cli/main/install.sh | sh'}</CodeBlock>
         <p className="text-xs text-muted-foreground">
-          Or install from source: <code className="text-primary bg-primary/10 px-1 rounded">go install github.com/loki-bedlam/reposwarm-cli/cmd/reposwarm@latest</code>
+          Or install from source: <code className="text-primary bg-primary/10 px-1 rounded">go install github.com/loki-bedlam/reposwarm-cli@latest</code>
         </p>
       </section>
 
