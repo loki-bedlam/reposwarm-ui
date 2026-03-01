@@ -1,115 +1,71 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { temporalClient } from '@/lib/temporal'
-import { dynamoService } from '@/lib/dynamodb'
-import { CodeCommitClient, ListRepositoriesCommand, GetRepositoryCommand } from '@aws-sdk/client-codecommit'
 
-const AWS_REGION = process.env.AWS_REGION || 'us-east-1'
-
-async function autoDiscoverRepos(): Promise<string[]> {
-  const codecommit = new CodeCommitClient({ region: AWS_REGION })
-  const discovered: string[] = []
-  let nextToken: string | undefined
-
-  do {
-    const response = await codecommit.send(new ListRepositoriesCommand({
-      nextToken,
-      sortBy: 'repositoryName',
-      order: 'ascending'
-    }))
-
-    for (const repo of response.repositories || []) {
-      if (!repo.repositoryName) continue
-      discovered.push(repo.repositoryName)
-
-      try {
-        const existing = await dynamoService.getRepo(repo.repositoryName)
-        if (!existing) {
-          const detail = await codecommit.send(new GetRepositoryCommand({
-            repositoryName: repo.repositoryName
-          }))
-          await dynamoService.addRepo({
-            name: repo.repositoryName,
-            url: detail.repositoryMetadata?.cloneUrlHttp || `codecommit://${repo.repositoryName}`,
-            source: 'CodeCommit',
-            lastCommit: detail.repositoryMetadata?.lastModifiedDate?.toISOString(),
-            enabled: true,
-            status: 'active'
-          })
-        }
-      } catch (err) {
-        logger.warn('Failed to persist discovered repo:', { repo: repo.repositoryName, error: String(err) })
-      }
-    }
-
-    nextToken = response.nextToken
-  } while (nextToken)
-
-  return discovered
-}
-
+/**
+ * POST /api/trigger/daily
+ *
+ * Starts an InvestigateReposWorkflow that:
+ *   1. Auto-discovers repos from repos.json (worker reads it internally)
+ *   2. Investigates all repos in parallel chunks
+ *   3. Sleeps for `sleep_hours` then continues-as-new (runs forever on a schedule)
+ *
+ * Body (all optional):
+ *   - sleep_hours:  number  — hours between investigation cycles (default: 24)
+ *   - chunk_size:   number  — parallel repo limit per chunk (default: 10)
+ *   - model:        string  — Claude model override
+ *   - max_tokens:   number  — max tokens override
+ *   - force:        boolean — force re-investigate even if cached (first run only)
+ */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { repos, model, chunkSize, parallelLimit } = body
-
-    let repoList = repos
-    if (!repoList || repoList.length === 0) {
-      const allRepos = await dynamoService.listRepos()
-      repoList = allRepos
-        .filter(r => r.enabled)
-        .map(r => r.name)
-
-      if (repoList.length === 0) {
-        logger.info('No repos in DB, auto-discovering from CodeCommit...')
-        repoList = await autoDiscoverRepos()
-        logger.info(`Auto-discovered ${repoList.length} repos`)
-      }
-    }
-
-    if (repoList.length === 0) {
-      return NextResponse.json(
-        { error: 'No repositories found. Check IAM permissions for CodeCommit access.' },
-        { status: 400 }
-      )
-    }
-
-    // Build repo objects with URLs for the worker (snake_case Pydantic model)
-    const repoObjects = await Promise.all(
-      repoList.map(async (name: string) => {
-        const repo = await dynamoService.getRepo(name)
-        return {
-          repo_name: name,
-          repo_url: repo?.url || `https://git-codecommit.${AWS_REGION}.amazonaws.com/v1/repos/${name}`
-        }
-      })
-    )
+    const body = await request.json().catch(() => ({}))
+    const {
+      sleep_hours = 24,
+      chunk_size = 10,
+      model,
+      max_tokens,
+      force = false,
+    } = body
 
     const workflowId = `investigate-daily-${Date.now()}`
+
+    // Build InvestigateReposRequest matching the Python Pydantic model
+    const workflowInput: Record<string, unknown> = {
+      force: Boolean(force),
+      sleep_hours: Number(sleep_hours),
+      chunk_size: Number(chunk_size),
+      iteration_count: 0,
+    }
+    if (model) workflowInput.claude_model = model
+    if (max_tokens) workflowInput.max_tokens = Number(max_tokens)
+
+    logger.info('Starting daily investigation workflow', {
+      workflowId,
+      input: workflowInput,
+    })
 
     const result = await temporalClient.startWorkflow(
       workflowId,
       'InvestigateReposWorkflow',
-      {
-        repos: repoObjects,
-        model: model || 'us.anthropic.claude-sonnet-4-6',
-        chunk_size: chunkSize || 10,
-        parallel_limit: parallelLimit || 3
-      }
+      workflowInput,
     )
 
     return NextResponse.json({
       success: true,
       workflowId: result.workflowId,
       runId: result.runId,
-      repoCount: repoList.length,
-      autoDiscovered: !repos || repos.length === 0
+      sleepHours: sleep_hours,
+      chunkSize: chunk_size,
+      force,
     })
   } catch (error) {
-    logger.error('Error triggering daily investigation:', { error: String(error) })
+    logger.error('Error triggering daily investigation:', {
+      error: String(error),
+    })
     return NextResponse.json(
       { error: 'Failed to trigger daily investigation' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
