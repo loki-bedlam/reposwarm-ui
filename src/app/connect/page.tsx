@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Terminal, Copy, Check, Monitor, Key, Globe, BookOpen } from 'lucide-react'
+import { Terminal, Copy, Check, Monitor, Key, Globe, BookOpen, Trash2, Eye, EyeOff, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function CopyButton({ text }: { text: string }) {
@@ -24,6 +24,151 @@ function CodeBlock({ children, copyText }: { children: string; copyText?: string
         <code className="text-foreground">{children}</code>
       </pre>
       <CopyButton text={copyText || children} />
+    </div>
+  )
+}
+
+
+interface ApiTokenInfo {
+  id: string
+  prefix: string
+  label: string
+  createdAt: string
+  createdBy: string
+}
+
+function TokenManager() {
+  const [tokens, setTokens] = useState<ApiTokenInfo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [newToken, setNewToken] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [label, setLabel] = useState('CLI Token')
+
+  const fetchTokens = async () => {
+    try {
+      const { apiFetchJson } = await import('@/lib/api')
+      const data = await apiFetchJson<{ tokens: ApiTokenInfo[] }>('/tokens')
+      setTokens(data.tokens || [])
+    } catch (err) {
+      console.error('Failed to fetch tokens:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useState(() => { fetchTokens() })
+
+  const generateToken = async () => {
+    setGenerating(true)
+    try {
+      const { apiFetch } = await import('@/lib/api')
+      const res = await apiFetch('/tokens', {
+        method: 'POST',
+        body: JSON.stringify({ label })
+      })
+      const json = await res.json()
+      const data = json.data || json
+      setNewToken(data.token)
+      setLabel('CLI Token')
+      fetchTokens()
+    } catch (err) {
+      console.error('Failed to generate token:', err)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const revokeToken = async (id: string) => {
+    try {
+      const { apiFetch } = await import('@/lib/api')
+      await apiFetch(`/tokens/${id}`, { method: 'DELETE' })
+      fetchTokens()
+    } catch (err) {
+      console.error('Failed to revoke token:', err)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Generated token banner — show once */}
+      {newToken && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium text-green-400">
+            <Check className="h-4 w-4" />
+            Token generated — copy it now, it won\u0027t be shown again
+          </div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-sm font-mono bg-background border border-border rounded-md px-3 py-2 break-all select-all">
+              {newToken}
+            </code>
+            <button
+              onClick={() => { navigator.clipboard.writeText(newToken); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+              className="shrink-0 px-3 py-2 bg-green-500/20 text-green-400 rounded-md hover:bg-green-500/30 transition-colors"
+            >
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+          <button
+            onClick={() => setNewToken(null)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Generate new token */}
+      <div className="flex items-end gap-3">
+        <div className="flex-1">
+          <label className="text-xs text-muted-foreground mb-1 block">Token label</label>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="e.g. My Laptop, CI/CD..."
+            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+        <button
+          onClick={generateToken}
+          disabled={generating}
+          className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {generating ? 'Generating...' : 'Generate Token'}
+        </button>
+      </div>
+
+      {/* Existing tokens */}
+      {loading ? (
+        <div className="text-sm text-muted-foreground">Loading tokens...</div>
+      ) : tokens.length === 0 ? (
+        <div className="text-sm text-muted-foreground">No API tokens yet. Generate one above.</div>
+      ) : (
+        <div className="space-y-2">
+          {tokens.map(t => (
+            <div key={t.id} className="flex items-center justify-between bg-background border border-border rounded-md px-3 py-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <Key className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{t.label}</div>
+                  <div className="text-xs text-muted-foreground">
+                    <code>{t.prefix}...{'*'.repeat(24)}</code> · Created {new Date(t.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => revokeToken(t.id)}
+                className="p-1.5 text-muted-foreground hover:text-red-400 rounded transition-colors"
+                title="Revoke token"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -105,6 +250,10 @@ export default function ConnectPage() {
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="pt-2 pb-2 border-b border-border mb-4">
+          <TokenManager />
         </div>
 
         <div className="pt-2">
