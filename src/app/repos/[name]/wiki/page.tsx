@@ -58,7 +58,10 @@ export default function WikiPage({ params }: { params: Promise<{ name: string }>
   if (indexLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-muted-foreground">Loading wiki...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="text-muted-foreground">Loading documentation...</div>
+        </div>
       </div>
     )
   }
@@ -152,7 +155,12 @@ export default function WikiPage({ params }: { params: Promise<{ name: string }>
         {/* Content */}
         <div className="flex-1 bg-card rounded-lg border border-border overflow-y-auto min-w-0">
           {contentLoading ? (
-            <div className="p-8 text-center text-muted-foreground">Loading section...</div>
+            <div className="flex items-center justify-center h-64">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="text-sm text-muted-foreground">Loading section...</div>
+              </div>
+            </div>
           ) : content?.content ? (
             <div className="p-4 lg:p-8">
               {content.createdAt && (
