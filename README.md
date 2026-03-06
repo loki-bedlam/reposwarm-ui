@@ -70,7 +70,13 @@ npm start
 
 ## Docker
 
-### Build Image
+Pre-built images are published on every push to `main`:
+
+```bash
+docker pull ghcr.io/reposwarm/ui:latest
+```
+
+Or build locally:
 
 ```bash
 docker build -t reposwarm-ui .
@@ -83,8 +89,10 @@ docker run -p 3000:3000 \
   -e TEMPORAL_SERVER_URL=http://temporal:8233 \
   -e AWS_REGION=us-east-1 \
   -e DYNAMODB_CACHE_TABLE=reposwarm-cache \
-  reposwarm-ui
+  ghcr.io/reposwarm/ui:latest
 ```
+
+Multi-arch images available: `linux/amd64` and `linux/arm64`.
 
 ## API Routes
 
