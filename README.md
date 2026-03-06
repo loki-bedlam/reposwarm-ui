@@ -138,4 +138,16 @@ The UI communicates with:
 
 ## License
 
-MIT# Auto-trigger test 19:30
+MIT
+
+## Ecosystem
+
+| Project | Docker Image |
+|---------|-------------|
+| [reposwarm](https://github.com/reposwarm/reposwarm) (worker) | `ghcr.io/reposwarm/worker:latest` |
+| [reposwarm-api](https://github.com/reposwarm/reposwarm-api) | `ghcr.io/reposwarm/api:latest` |
+| **reposwarm-ui** (this repo) | `ghcr.io/reposwarm/ui:latest` |
+| [reposwarm-cli](https://github.com/reposwarm/reposwarm-cli) | — (binary install) |
+| [reposwarm-askbox](https://github.com/reposwarm/reposwarm-askbox) | `ghcr.io/reposwarm/askbox:latest` |
+
+All Docker images are multi-arch (`linux/amd64` + `linux/arm64`), published automatically on every push to `main`.
