@@ -34,6 +34,7 @@ COPY --from=builder /app/.next/static ./.next/static
 # Set environment to production
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
 # Environment variables (can be overridden at runtime)
 ENV TEMPORAL_HTTP_URL=http://temporal-alb-internal:8233
