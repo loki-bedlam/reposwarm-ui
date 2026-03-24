@@ -49,12 +49,16 @@ export interface DiscoverResult {
 export function useDiscoverRepos() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => apiFetchJson<DiscoverResult>('/repos/discover', { method: 'POST' }),
+    mutationFn: (params?: { source?: string; org?: string }) =>
+      apiFetchJson<DiscoverResult>('/repos/discover', {
+        method: 'POST',
+        body: JSON.stringify(params || {})
+      }),
     onSuccess: (data) => {
       if (data.added > 0) {
         toast.success(`Discovered ${data.discovered} repos, added ${data.added} new`)
       } else {
-        toast.success(`All ${data.discovered} CodeCommit repos already tracked`)
+        toast.success(`All ${data.discovered} repos already tracked`)
       }
       queryClient.invalidateQueries({ queryKey: ['repos'] })
     },
