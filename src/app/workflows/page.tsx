@@ -142,7 +142,7 @@ export default function WorkflowsPage() {
             const isRunning = wf.status.toLowerCase() === 'running'
             const isFailed = wf.status.toLowerCase() === 'failed'
             const isTerminated = wf.status.toLowerCase() === 'terminated'
-            const isSingle = wf.type === 'single' || wf.type === 'InvestigateSingleRepoWorkflow'
+            const isSingle = (wf.type as string) === 'single' || (wf.type as string) === 'InvestigateSingleRepoWorkflow'
 
             return (
               <div
