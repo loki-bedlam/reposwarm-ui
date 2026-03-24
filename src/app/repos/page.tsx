@@ -109,6 +109,7 @@ export default function RepositoriesPage() {
               >
                 <Radar className={`h-4 w-4 ${discover.isPending ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">{discover.isPending ? 'Discovering...' : 'Auto-Discover'}</span>
+
               </button>
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
@@ -167,7 +168,7 @@ export default function RepositoriesPage() {
                 <p>No repositories configured</p>
                 <button onClick={() => discover.mutate()} disabled={discover.isPending}
                   className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors inline-flex items-center gap-2">
-                  <Radar className="h-4 w-4" />Auto-Discover from CodeCommit
+                  <Radar className="h-4 w-4" />Auto-Discover
                 </button>
               </div>
             )}
