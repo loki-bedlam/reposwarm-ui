@@ -183,7 +183,7 @@ export default function WorkflowDetailPage() {
   }
 
   const isRunning = workflow.status === 'Running'
-  const isSingleInvestigation = workflow.type === 'single'
+  const isSingleInvestigation = workflow.type === 'single' || workflow.type === 'InvestigateSingleRepoWorkflow'
 
   return (
     <div className="space-y-6">
