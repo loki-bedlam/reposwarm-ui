@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { TimelineEvent } from '@/components/TimelineEvent'
 import { JsonViewer } from '@/components/JsonViewer'
 import { formatDate, formatDuration } from '@/lib/utils'
-import { ArrowLeft, StopCircle, CheckCircle2, Circle, Loader2 } from 'lucide-react'
+import { ArrowLeft, StopCircle, CheckCircle2, Circle, Loader2, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { TriggerModal } from '@/components/TriggerModal'
 import toast from 'react-hot-toast'
@@ -219,6 +219,15 @@ export default function WorkflowDetailPage() {
               Terminate
             </button>
           )}
+          <a
+            href={`http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8233/namespaces/default/workflows/${encodeURIComponent(workflow.workflowId)}/${encodeURIComponent(workflow.runId)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-accent text-muted-foreground rounded-lg hover:bg-accent/80 hover:text-accent-foreground transition-colors flex items-center gap-2 text-sm"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Temporal UI
+          </a>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
