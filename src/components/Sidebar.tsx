@@ -12,7 +12,8 @@ import {
   BookOpen,
   Menu,
   X,
-  Terminal
+  Terminal,
+  AlertTriangle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Repositories', href: '/repos', icon: GitBranch },
   { name: 'Triggers', href: '/triggers', icon: Zap },
   { name: 'Wiki', href: '/wiki', icon: BookOpen },
+  { name: 'Errors', href: '/errors', icon: AlertTriangle },
   { name: 'Connect CLI', href: '/connect', icon: Terminal },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]

@@ -12,7 +12,7 @@ RepoSwarm UI is a Next.js dashboard for managing and monitoring the AI-powered m
 
 ## Tech Stack
 
-- **Framework**: Next.js 14+ (App Router)
+- **Framework**: Next.js 16+ (App Router)
 - **Language**: TypeScript (strict mode)
 - **Styling**: Tailwind CSS with dark theme
 - **State Management**: React Query (TanStack Query)
@@ -40,7 +40,18 @@ TEMPORAL_TASK_QUEUE=investigate-task-queue
 AWS_REGION=us-east-1
 DYNAMODB_CACHE_TABLE=reposwarm-cache
 CODECOMMIT_ENABLED=true
+REPOSWARM_API_URL=http://api:3000
 ```
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TEMPORAL_SERVER_URL` | — | Temporal HTTP API endpoint |
+| `TEMPORAL_NAMESPACE` | `default` | Temporal namespace |
+| `TEMPORAL_TASK_QUEUE` | `investigate-task-queue` | Temporal task queue |
+| `AWS_REGION` | `us-east-1` | AWS region for DynamoDB |
+| `DYNAMODB_CACHE_TABLE` | `reposwarm-cache` | DynamoDB table for caching |
+| `CODECOMMIT_ENABLED` | `true` | Enable CodeCommit integration |
+| `REPOSWARM_API_URL` | `http://api:3000` | URL of the RepoSwarm API server. Used to proxy `/v1/*` requests from the UI to the API in Docker Compose setups. |
 
 ### Installation
 
@@ -132,9 +143,10 @@ src/
 
 The UI communicates with:
 
-1. **Temporal Server HTTP API** (port 8233) - for workflow management
-2. **AWS DynamoDB** - for repository configuration and caching
-3. **RepoSwarm Workers** - indirectly through Temporal workflows
+1. **RepoSwarm API Server** (`/v1/*` proxied via Next.js rewrites) - for repository management, investigation triggers, and results. In Docker Compose setups, the UI proxies all `/v1/*` requests to the standalone API container (`REPOSWARM_API_URL`).
+2. **Temporal Server HTTP API** (port 8233) - for workflow management
+3. **AWS DynamoDB** - for repository configuration and caching
+4. **RepoSwarm Workers** - indirectly through Temporal workflows
 
 ## License
 

@@ -6,8 +6,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [
     '@aws-sdk/client-dynamodb',
     '@aws-sdk/lib-dynamodb',
-    '@aws-sdk/client-codecommit'
-  ]
+  ],
 }
 
 export default nextConfig

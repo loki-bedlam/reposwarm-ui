@@ -29,7 +29,7 @@ export default function TriggersPage() {
   // Auto-discover on mount if no repos exist
   useEffect(() => {
     if (!reposLoading && repos && repos.length === 0) {
-      discover.mutate()
+      discover.mutate({})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reposLoading, repos?.length])
@@ -76,7 +76,7 @@ export default function TriggersPage() {
     // If no repos, auto-discover first
     if (enabledRepoCount === 0) {
       toast('Discovering repos first...')
-      await discover.mutateAsync()
+      await discover.mutateAsync({})
     }
     await triggerDaily.mutateAsync(undefined)
     setShowDailyModal(false)
@@ -151,7 +151,7 @@ export default function TriggersPage() {
             <h2 className="text-lg font-semibold">Daily Schedule</h2>
           </div>
           <button
-            onClick={() => discover.mutate()}
+            onClick={() => discover.mutate({})}
             disabled={discover.isPending}
             className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-2 disabled:opacity-50"
           >

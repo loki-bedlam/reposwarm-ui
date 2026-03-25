@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWorkflows } from '@/hooks/useWorkflows'
+import { useWikiSections } from '@/hooks/useWiki'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatDate, formatDuration } from '@/lib/utils'
 import { WorkflowExecution } from '@/lib/types'
@@ -10,11 +11,65 @@ import { Filter, BookOpen, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
+const TOTAL_STEPS = 17
+
+const INVESTIGATION_STEP_IDS = [
+  'hl_overview',
+  'module_deep_dive',
+  'core_entities',
+  'data_mapping',
+  'DBs',
+  'APIs',
+  'events',
+  'dependencies',
+  'service_dependencies',
+  'authentication',
+  'authorization',
+  'security_check',
+  'prompt_security_check',
+  'deployment',
+  'monitoring',
+  'ml_services',
+  'feature_flags',
+] as const
+
 function extractRepoName(workflowId: string): string | null {
   // investigate-single-{repoName}-{timestamp}
   const singleMatch = workflowId.match(/^investigate-single-(.+)-\d+$/)
   if (singleMatch) return singleMatch[1]
   return null
+}
+
+interface WorkflowProgressBarProps {
+  workflowId: string
+  isRunning: boolean
+}
+
+/** Compact progress bar for workflow list cards — only rendered for single-repo investigation workflows. */
+function WorkflowProgressBar({ workflowId, isRunning }: WorkflowProgressBarProps) {
+  const repoName = extractRepoName(workflowId)
+  const { data: wikiData } = useWikiSections(repoName, isRunning ? 5000 : false)
+
+  const completedIds = new Set((wikiData?.sections ?? []).map((s) => s.id))
+  const completedCount = INVESTIGATION_STEP_IDS.filter((id) => completedIds.has(id)).length
+  const pct = Math.round((completedCount / TOTAL_STEPS) * 100)
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border/50">
+      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+        <span className="font-medium">
+          {completedCount}/{TOTAL_STEPS} steps
+        </span>
+        <span className={cn(completedCount > 0 ? 'text-amber-500' : '')}>{pct}%</span>
+      </div>
+      <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-amber-500 rounded-full transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  )
 }
 
 export default function WorkflowsPage() {
@@ -87,6 +142,7 @@ export default function WorkflowsPage() {
             const isRunning = wf.status.toLowerCase() === 'running'
             const isFailed = wf.status.toLowerCase() === 'failed'
             const isTerminated = wf.status.toLowerCase() === 'terminated'
+            const isSingle = (wf.type as string) === 'single' || (wf.type as string) === 'InvestigateSingleRepoWorkflow'
 
             return (
               <div
@@ -111,7 +167,7 @@ export default function WorkflowsPage() {
                       isFailed ? 'bg-red-500' :
                       'bg-purple-500'
                     )} />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-sm truncate">{wf.workflowId}</span>
                         <StatusBadge status={wf.status} />
@@ -127,6 +183,11 @@ export default function WorkflowsPage() {
                         {!isRunning && <span>{formatDate(wf.startTime)}</span>}
                         {wf.duration && <span>{formatDuration(wf.duration)}</span>}
                       </div>
+
+                      {/* Compact progress bar for single-repo investigation workflows */}
+                      {isSingle && (
+                        <WorkflowProgressBar workflowId={wf.workflowId} isRunning={isRunning} />
+                      )}
                     </div>
                   </div>
 
