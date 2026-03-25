@@ -8,30 +8,14 @@ import { TimelineEvent } from '@/components/TimelineEvent'
 import { JsonViewer } from '@/components/JsonViewer'
 import { formatDate, formatDuration } from '@/lib/utils'
 import { ArrowLeft, StopCircle, CheckCircle2, Circle, Loader2, ExternalLink } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { TriggerModal } from '@/components/TriggerModal'
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
-
-const INVESTIGATION_STEPS = [
-  { id: 'hl_overview', label: 'Overview' },
-  { id: 'module_deep_dive', label: 'Module Deep Dive' },
-  { id: 'core_entities', label: 'Core Entities' },
-  { id: 'data_mapping', label: 'Data Mapping' },
-  { id: 'DBs', label: 'Databases' },
-  { id: 'APIs', label: 'APIs' },
-  { id: 'events', label: 'Events' },
-  { id: 'dependencies', label: 'Dependencies' },
-  { id: 'service_dependencies', label: 'Service Dependencies' },
-  { id: 'authentication', label: 'Authentication' },
-  { id: 'authorization', label: 'Authorization' },
-  { id: 'security_check', label: 'Security' },
-  { id: 'prompt_security_check', label: 'Prompt Security' },
-  { id: 'deployment', label: 'Deployment' },
-  { id: 'monitoring', label: 'Monitoring' },
-  { id: 'ml_services', label: 'ML Services' },
-  { id: 'feature_flags', label: 'Feature Flags' },
-] as const
+import {
+  INVESTIGATION_STEPS,
+  extractCompletedStepsFromHistory,
+} from '@/lib/investigation-progress'
 
 function extractRepoName(workflowId: string): string | null {
   // Format: investigate-single-{repoName}-{timestamp}
@@ -56,16 +40,32 @@ interface InvestigationProgressProps {
 function InvestigationProgress({ workflowId, isRunning }: InvestigationProgressProps) {
   const repoName = extractRepoName(workflowId)
   const { data: wikiData } = useWikiSections(repoName, isRunning ? 5000 : false)
+  const { data: history } = useWorkflowHistory(workflowId, undefined, isRunning ? 5000 : false)
 
-  const completedIds = new Set((wikiData?.sections ?? []).map((s) => s.id))
-  const completedCount = INVESTIGATION_STEPS.filter((step) => completedIds.has(step.id)).length
+  // Compute completed steps from both wiki and history
+  const { completedIds, completedCount, pct, activeStep } = useMemo(() => {
+    // Source 1: Wiki sections (from arch-hub)
+    const wikiCompletedIds = new Set((wikiData?.sections ?? []).map((s) => s.id))
+
+    // Source 2: Workflow history events (from Temporal)
+    const historyCompletedIds = history?.events
+      ? extractCompletedStepsFromHistory(history.events)
+      : new Set<string>()
+
+    // Merge both sources
+    const merged = new Set([...wikiCompletedIds, ...historyCompletedIds])
+    const count = INVESTIGATION_STEPS.filter((step) => merged.has(step.id)).length
+    const percentage = Math.round((count / INVESTIGATION_STEPS.length) * 100)
+
+    // First incomplete step = active (when running)
+    const active = isRunning
+      ? INVESTIGATION_STEPS.find((step) => !merged.has(step.id))
+      : undefined
+
+    return { completedIds: merged, completedCount: count, pct: percentage, activeStep: active }
+  }, [wikiData, history, isRunning])
+
   const totalSteps = INVESTIGATION_STEPS.length
-  const pct = Math.round((completedCount / totalSteps) * 100)
-
-  // First incomplete step = active (when running)
-  const activeStep = isRunning
-    ? INVESTIGATION_STEPS.find((step) => !completedIds.has(step.id))
-    : undefined
 
   return (
     <div className="bg-card rounded-lg border border-border p-6">
