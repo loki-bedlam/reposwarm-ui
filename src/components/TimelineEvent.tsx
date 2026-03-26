@@ -11,10 +11,14 @@ interface TimelineEventProps {
     details?: any
   }
   isLast?: boolean
+  defaultExpanded?: boolean
 }
 
-export function TimelineEvent({ event, isLast = false }: TimelineEventProps) {
+export function TimelineEvent({ event, isLast = false, defaultExpanded = false }: TimelineEventProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
   const [stackTraceExpanded, setStackTraceExpanded] = useState(false)
+
+  const isFailed = event.eventType.toLowerCase().includes('failed')
 
   const getEventIcon = () => {
     const type = event.eventType.toLowerCase()
@@ -51,19 +55,16 @@ export function TimelineEvent({ event, isLast = false }: TimelineEventProps) {
 
       return (
         <div className="mt-3 p-3 bg-red-950/20 rounded border border-red-800/40">
-          {/* Main error message */}
           <p className="text-sm font-medium text-red-400">
             {mainMessage || 'Unknown error'}
           </p>
 
-          {/* Source */}
           {failure.source && (
             <p className="mt-1 text-xs text-muted-foreground">
               Source: <span className="font-mono">{failure.source}</span>
             </p>
           )}
 
-          {/* Cause message */}
           {showCause && (
             <div className="mt-2 p-2 bg-red-950/30 rounded border border-red-800/30">
               <p className="text-xs text-muted-foreground mb-1">Caused by:</p>
@@ -79,11 +80,10 @@ export function TimelineEvent({ event, isLast = false }: TimelineEventProps) {
             </div>
           )}
 
-          {/* Stack trace (collapsible) */}
           {stackTrace && (
             <div className="mt-2">
               <button
-                onClick={() => setStackTraceExpanded(!stackTraceExpanded)}
+                onClick={(e) => { e.stopPropagation(); setStackTraceExpanded(!stackTraceExpanded) }}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 {stackTraceExpanded
@@ -103,7 +103,6 @@ export function TimelineEvent({ event, isLast = false }: TimelineEventProps) {
       )
     }
 
-    // Non-failure: render raw JSON
     return (
       <div className="mt-3 p-3 bg-background rounded border border-border">
         <pre className="text-xs font-mono overflow-x-auto">
@@ -124,17 +123,36 @@ export function TimelineEvent({ event, isLast = false }: TimelineEventProps) {
         )}
       </div>
       <div className="flex-1 pb-8">
-        <div className="bg-card p-4 rounded-lg border border-border">
-          <div className="flex items-start justify-between mb-2">
-            <h4 className="font-medium">{formatEventType(event.eventType)}</h4>
-            <span className="text-xs text-muted-foreground">
-              {format(new Date(event.eventTime), 'MMM d, HH:mm:ss')}
-            </span>
+        <div
+          className={cn(
+            'bg-card rounded-lg border transition-colors',
+            isFailed ? 'border-red-500/30' : 'border-border',
+            'hover:border-accent cursor-pointer'
+          )}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <div className="flex items-center gap-2 p-4">
+            {expanded
+              ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+              : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            }
+            <div className="flex-1 flex items-start justify-between min-w-0">
+              <h4 className={cn('font-medium text-sm', isFailed && 'text-red-400')}>
+                {formatEventType(event.eventType)}
+              </h4>
+              <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                {format(new Date(event.eventTime), 'MMM d, HH:mm:ss')}
+              </span>
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground">
-            Event ID: {event.eventId}
-          </div>
-          {renderDetails()}
+          {expanded && (
+            <div className="px-4 pb-4 pt-0">
+              <div className="text-sm text-muted-foreground">
+                Event ID: {event.eventId}
+              </div>
+              {renderDetails()}
+            </div>
+          )}
         </div>
       </div>
     </div>
