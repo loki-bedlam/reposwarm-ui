@@ -3,6 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const TEMPORAL_HEALTH_API = process.env.TEMPORAL_HEALTH_API || 'https://zshclevi8i.execute-api.us-east-1.amazonaws.com/prod/health'
 
+function normalizeStatus(status: string): string {
+  if (!status) return 'Running'
+  // WORKFLOW_EXECUTION_STATUS_RUNNING -> Running
+  const cleaned = status.replace('WORKFLOW_EXECUTION_STATUS_', '')
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase()
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -26,7 +33,7 @@ export async function GET(request: NextRequest) {
       workflowId: exec.execution?.workflowId || '',
       runId: exec.execution?.runId || '',
       type: inferWorkflowType(exec.type?.name || ''),
-      status: exec.status || 'Running',
+      status: normalizeStatus(exec.status || 'Running'),
       startTime: exec.startTime || new Date().toISOString(),
       closeTime: exec.closeTime,
       duration: exec.closeTime
