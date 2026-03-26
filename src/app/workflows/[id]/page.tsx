@@ -5,6 +5,7 @@ import { useWorkflow, useWorkflowHistory, useTerminateWorkflow } from '@/hooks/u
 import { useWikiSections } from '@/hooks/useWiki'
 import { StatusBadge } from '@/components/StatusBadge'
 import { TimelineEvent } from '@/components/TimelineEvent'
+import { ActivityGantt } from '@/components/ActivityGantt'
 import { JsonViewer } from '@/components/JsonViewer'
 import { formatDate, formatDuration } from '@/lib/utils'
 import { ArrowLeft, StopCircle, CheckCircle2, Circle, Loader2, ExternalLink, AlertTriangle, Filter, ChevronDown, ChevronUp } from 'lucide-react'
@@ -327,6 +328,11 @@ export default function WorkflowDetailPage() {
       {/* Investigation Progress — only for single-repo investigation workflows */}
       {isSingleInvestigation && (
         <InvestigationProgress workflowId={workflow.workflowId} isRunning={isRunning} />
+      )}
+
+      {/* Activity Gantt — shows all activities with timeline bars */}
+      {history?.events && history.events.length > 0 && (
+        <ActivityGantt events={history.events} isRunning={isRunning} />
       )}
 
       {/* Input/Output */}
