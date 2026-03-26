@@ -16,6 +16,12 @@ export interface WorkflowExecution {
   memo?: Record<string, any>
   stale: boolean
   startedAgo: string
+  failure?: {
+    message: string
+    source?: string
+    stackTrace?: string
+    cause?: any
+  }
 }
 
 export interface WorkflowHistory {
@@ -27,6 +33,26 @@ export interface WorkflowEvent {
   eventTime: string
   eventType: string
   details?: any
+}
+
+export interface EcsServiceInfo {
+  name: string
+  displayName: string
+  desired: number
+  running: number
+  pending: number
+  status: string
+  cpu: number
+  memory: number
+  arch: string
+  lastDeployment?: string
+  deploymentStatus?: string
+}
+
+export interface InfrastructureData {
+  services: EcsServiceInfo[]
+  source: 'ecs' | 'unavailable' | 'error'
+  error?: string
 }
 
 export interface Repository {

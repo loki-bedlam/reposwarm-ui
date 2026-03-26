@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
+import { useWorkflows } from '@/hooks/useWorkflows'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
@@ -32,6 +33,13 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { data: workflowsData } = useWorkflows(100)
+  const errorCount = workflowsData?.executions?.filter(
+    (e) => e.status === 'Failed' || e.status === 'Terminated'
+  ).length ?? 0
+  const runningCount = workflowsData?.executions?.filter(
+    (e) => e.status === 'Running'
+  ).length ?? 0
 
   // Close sidebar on route change
   useEffect(() => {
@@ -77,7 +85,12 @@ export function Sidebar() {
               )}
             >
               <item.icon className="mr-3 h-5 w-5" />
-              {item.name}
+              {item.name === 'Errors' && errorCount > 0
+                ? `Errors (${errorCount})`
+                : item.name === 'Workflows' && runningCount > 0
+                ? `Workflows (${runningCount})`
+                : item.name
+              }
             </Link>
           )
         })}

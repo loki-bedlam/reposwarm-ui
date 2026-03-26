@@ -6,6 +6,7 @@ import { apiFetchJson } from '@/lib/api'
 import { StatsCard } from '@/components/StatsCard'
 import { StatusBadge } from '@/components/StatusBadge'
 import { DataTable } from '@/components/DataTable'
+import { InfrastructurePanel } from '@/components/InfrastructurePanel'
 import { formatDate, formatDuration } from '@/lib/utils'
 import { useTriggerDaily } from '@/hooks/useTrigger'
 import { useRouter } from 'next/navigation'
@@ -152,7 +153,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* System Health */}
+      {/* Infrastructure (ECS services) */}
+      <InfrastructurePanel />
+
+      {/* System Health (fallback when not on ECS) */}
       <div className="bg-card rounded-lg border border-border p-6">
         <h2 className="text-lg font-semibold mb-4">System Health</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

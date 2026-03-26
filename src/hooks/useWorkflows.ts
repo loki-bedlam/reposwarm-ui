@@ -7,13 +7,14 @@ interface WorkflowsResponse {
   nextPageToken?: string
 }
 
-export function useWorkflows(pageSize = 25, pageToken?: string) {
+export function useWorkflows(pageSize = 25, pageToken?: string, options?: { enrichFailed?: boolean }) {
   return useQuery<WorkflowsResponse>({
-    queryKey: ['workflows', pageSize, pageToken],
+    queryKey: ['workflows', pageSize, pageToken, options?.enrichFailed],
     queryFn: () => {
       const params = new URLSearchParams({
         pageSize: pageSize.toString(),
-        ...(pageToken && { pageToken })
+        ...(pageToken && { pageToken }),
+        ...(options?.enrichFailed && { enrichFailed: 'true' })
       })
       return apiFetchJson<WorkflowsResponse>(`/workflows?${params}`)
     }
@@ -31,14 +32,15 @@ export function useWorkflow(workflowId: string, runId?: string) {
   })
 }
 
-export function useWorkflowHistory(workflowId: string, runId?: string) {
+export function useWorkflowHistory(workflowId: string, runId?: string, refetchInterval?: number | false) {
   return useQuery<WorkflowHistory>({
     queryKey: ['workflow-history', workflowId, runId],
     queryFn: () => {
       const params = runId ? `?runId=${runId}` : ''
       return apiFetchJson<WorkflowHistory>(`/workflows/${workflowId}/history${params}`)
     },
-    enabled: !!workflowId
+    enabled: !!workflowId,
+    refetchInterval: refetchInterval ?? false,
   })
 }
 

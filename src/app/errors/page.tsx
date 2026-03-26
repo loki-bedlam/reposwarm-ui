@@ -3,8 +3,10 @@
 import { useWorkflows } from '@/hooks/useWorkflows'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatDate } from '@/lib/utils'
-import { AlertTriangle, Loader2 } from 'lucide-react'
+import { AlertTriangle, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
+import { WorkflowExecution } from '@/lib/types'
 
 function extractRepoName(workflowId: string): string {
   // Format: investigate-single-{repoName}-{timestamp}
@@ -26,7 +28,7 @@ function extractRepoName(workflowId: string): string {
   return workflowId
 }
 
-function extractErrorMessage(workflow: any): string {
+function extractErrorMessage(workflow: WorkflowExecution): string {
   // Try to pull a meaningful error string from available fields
   if (workflow.failure) {
     if (typeof workflow.failure === 'string') return workflow.failure
@@ -51,9 +53,76 @@ function extractErrorMessage(workflow: any): string {
   return 'No error details available'
 }
 
+function ErrorCard({ workflow }: { workflow: WorkflowExecution }) {
+  const [showStack, setShowStack] = useState(false)
+  const errorMessage = extractErrorMessage(workflow)
+  const repoName = extractRepoName(workflow.workflowId)
+  const timestamp = workflow.closeTime || workflow.startTime
+  const source = workflow.failure?.source
+  const stackTrace = workflow.failure?.stackTrace
+
+  return (
+    <div
+      key={`${workflow.workflowId}-${workflow.runId}`}
+      className="bg-card rounded-lg border border-red-500/20 p-5 hover:border-red-500/40 transition-colors"
+    >
+      {/* Top row: ID + status badge */}
+      <div className="flex items-start justify-between gap-4 mb-3">
+        <div className="min-w-0 flex-1">
+          <Link
+            href={`/workflows/${encodeURIComponent(workflow.workflowId)}`}
+            className="font-mono text-sm font-medium text-primary hover:underline break-all"
+          >
+            {workflow.workflowId}
+          </Link>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            Repo: <span className="text-foreground">{repoName}</span>
+            {' · '}
+            {formatDate(timestamp)}
+          </div>
+        </div>
+        <StatusBadge status={workflow.status} />
+      </div>
+
+      {/* Error message */}
+      <div className="bg-red-500/5 border border-red-500/20 rounded-md px-4 py-3">
+        {source && (
+          <p className="text-xs text-red-400/70 font-mono mb-1">{source}</p>
+        )}
+        <p className="text-xs text-red-400 font-medium uppercase tracking-wide mb-1">
+          Error
+        </p>
+        <p className="text-sm text-red-300 break-words">{errorMessage}</p>
+
+        {/* Stack trace toggle */}
+        {stackTrace && (
+          <div className="mt-2">
+            <button
+              onClick={() => setShowStack(!showStack)}
+              className="flex items-center gap-1 text-xs text-red-400/60 hover:text-red-400 transition-colors"
+            >
+              {showStack ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+              {showStack ? 'Hide' : 'Show'} stack trace
+            </button>
+            {showStack && (
+              <pre className="mt-2 text-xs text-red-300/60 font-mono bg-red-500/5 rounded p-3 overflow-auto max-h-48 whitespace-pre-wrap">
+                {stackTrace}
+              </pre>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function ErrorsPage() {
-  // Fetch up to 100 workflows and filter for Failed ones client-side
-  const { data, isLoading, isError } = useWorkflows(100)
+  // Fetch up to 100 workflows with failure enrichment for failed ones
+  const { data, isLoading, isError } = useWorkflows(100, undefined, { enrichFailed: true })
 
   const failedWorkflows = (data?.executions ?? [])
     .filter((wf) => wf.status === 'Failed' || wf.status === 'Terminated')
@@ -104,44 +173,12 @@ export default function ErrorsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {failedWorkflows.map((workflow) => {
-            const errorMessage = extractErrorMessage(workflow)
-            const repoName = extractRepoName(workflow.workflowId)
-            const timestamp = workflow.closeTime || workflow.startTime
-
-            return (
-              <div
-                key={`${workflow.workflowId}-${workflow.runId}`}
-                className="bg-card rounded-lg border border-red-500/20 p-5 hover:border-red-500/40 transition-colors"
-              >
-                {/* Top row: ID + status badge */}
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <div className="min-w-0 flex-1">
-                    <Link
-                      href={`/workflows/${encodeURIComponent(workflow.workflowId)}`}
-                      className="font-mono text-sm font-medium text-primary hover:underline break-all"
-                    >
-                      {workflow.workflowId}
-                    </Link>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Repo: <span className="text-foreground">{repoName}</span>
-                      {' · '}
-                      {formatDate(timestamp)}
-                    </div>
-                  </div>
-                  <StatusBadge status={workflow.status} />
-                </div>
-
-                {/* Error message */}
-                <div className="bg-red-500/5 border border-red-500/20 rounded-md px-4 py-3">
-                  <p className="text-xs text-red-400 font-medium uppercase tracking-wide mb-1">
-                    Error
-                  </p>
-                  <p className="text-sm text-red-300 break-words">{errorMessage}</p>
-                </div>
-              </div>
-            )
-          })}
+          {failedWorkflows.map((workflow) => (
+            <ErrorCard
+              key={`${workflow.workflowId}-${workflow.runId}`}
+              workflow={workflow}
+            />
+          ))}
         </div>
       )}
     </div>

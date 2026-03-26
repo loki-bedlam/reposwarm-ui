@@ -80,8 +80,8 @@ export class TemporalClient {
       events: (data.events || []).map((e: any) => ({
         eventId: e.eventId,
         eventTime: e.eventTime,
-        eventType: e.eventType,
-        details: e
+        eventType: this.normalizeEventType(e.eventType),
+        details: this.extractEventDetails(e)
       }))
     }
   }
@@ -160,6 +160,26 @@ export class TemporalClient {
       stale,
       startedAgo: formatDuration(agoMs),
     }
+  }
+
+  private normalizeEventType(eventType: string): string {
+    if (!eventType) return eventType
+    // Already PascalCase (no underscores) — pass through
+    if (!eventType.includes('_')) return eventType
+    // EVENT_TYPE_ACTIVITY_TASK_FAILED -> ActivityTaskFailed
+    const cleaned = eventType.replace('EVENT_TYPE_', '')
+    return cleaned
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join('')
+  }
+
+  private extractEventDetails(event: any): any {
+    // Find the event-specific attributes key (e.g. activityTaskFailedEventAttributes)
+    const attrKey = Object.keys(event).find((k) => k.endsWith('EventAttributes'))
+    const attrs = attrKey ? event[attrKey] : undefined
+    if (!attrs || typeof attrs !== 'object') return undefined
+    return attrs
   }
 
   private inferWorkflowType(workflowName: string): 'single' | 'multi' | 'daily' {

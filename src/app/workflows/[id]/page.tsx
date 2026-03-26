@@ -5,33 +5,18 @@ import { useWorkflow, useWorkflowHistory, useTerminateWorkflow } from '@/hooks/u
 import { useWikiSections } from '@/hooks/useWiki'
 import { StatusBadge } from '@/components/StatusBadge'
 import { TimelineEvent } from '@/components/TimelineEvent'
+import { ActivityGantt } from '@/components/ActivityGantt'
 import { JsonViewer } from '@/components/JsonViewer'
 import { formatDate, formatDuration } from '@/lib/utils'
-import { ArrowLeft, StopCircle, CheckCircle2, Circle, Loader2, ExternalLink } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft, StopCircle, CheckCircle2, Circle, Loader2, ExternalLink, AlertTriangle, Filter, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useMemo } from 'react'
 import { TriggerModal } from '@/components/TriggerModal'
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
-
-const INVESTIGATION_STEPS = [
-  { id: 'hl_overview', label: 'Overview' },
-  { id: 'module_deep_dive', label: 'Module Deep Dive' },
-  { id: 'core_entities', label: 'Core Entities' },
-  { id: 'data_mapping', label: 'Data Mapping' },
-  { id: 'DBs', label: 'Databases' },
-  { id: 'APIs', label: 'APIs' },
-  { id: 'events', label: 'Events' },
-  { id: 'dependencies', label: 'Dependencies' },
-  { id: 'service_dependencies', label: 'Service Dependencies' },
-  { id: 'authentication', label: 'Authentication' },
-  { id: 'authorization', label: 'Authorization' },
-  { id: 'security_check', label: 'Security' },
-  { id: 'prompt_security_check', label: 'Prompt Security' },
-  { id: 'deployment', label: 'Deployment' },
-  { id: 'monitoring', label: 'Monitoring' },
-  { id: 'ml_services', label: 'ML Services' },
-  { id: 'feature_flags', label: 'Feature Flags' },
-] as const
+import {
+  INVESTIGATION_STEPS,
+  extractCompletedStepsFromHistory,
+} from '@/lib/investigation-progress'
 
 function extractRepoName(workflowId: string): string | null {
   // Format: investigate-single-{repoName}-{timestamp}
@@ -56,16 +41,32 @@ interface InvestigationProgressProps {
 function InvestigationProgress({ workflowId, isRunning }: InvestigationProgressProps) {
   const repoName = extractRepoName(workflowId)
   const { data: wikiData } = useWikiSections(repoName, isRunning ? 5000 : false)
+  const { data: history } = useWorkflowHistory(workflowId, undefined, isRunning ? 5000 : false)
 
-  const completedIds = new Set((wikiData?.sections ?? []).map((s) => s.id))
-  const completedCount = INVESTIGATION_STEPS.filter((step) => completedIds.has(step.id)).length
+  // Compute completed steps from both wiki and history
+  const { completedIds, completedCount, pct, activeStep } = useMemo(() => {
+    // Source 1: Wiki sections (from arch-hub)
+    const wikiCompletedIds = new Set((wikiData?.sections ?? []).map((s) => s.id))
+
+    // Source 2: Workflow history events (from Temporal)
+    const historyCompletedIds = history?.events
+      ? extractCompletedStepsFromHistory(history.events)
+      : new Set<string>()
+
+    // Merge both sources
+    const merged = new Set([...wikiCompletedIds, ...historyCompletedIds])
+    const count = INVESTIGATION_STEPS.filter((step) => merged.has(step.id)).length
+    const percentage = Math.round((count / INVESTIGATION_STEPS.length) * 100)
+
+    // First incomplete step = active (when running)
+    const active = isRunning
+      ? INVESTIGATION_STEPS.find((step) => !merged.has(step.id))
+      : undefined
+
+    return { completedIds: merged, completedCount: count, pct: percentage, activeStep: active }
+  }, [wikiData, history, isRunning])
+
   const totalSteps = INVESTIGATION_STEPS.length
-  const pct = Math.round((completedCount / totalSteps) * 100)
-
-  // First incomplete step = active (when running)
-  const activeStep = isRunning
-    ? INVESTIGATION_STEPS.find((step) => !completedIds.has(step.id))
-    : undefined
 
   return (
     <div className="bg-card rounded-lg border border-border p-6">
@@ -147,6 +148,8 @@ export default function WorkflowDetailPage() {
   const router = useRouter()
   const workflowId = params.id as string
   const [showTerminateModal, setShowTerminateModal] = useState(false)
+  const [showStackTrace, setShowStackTrace] = useState(false)
+  const [showErrorsOnly, setShowErrorsOnly] = useState(false)
 
   const { data: workflow, isLoading: workflowLoading } = useWorkflow(workflowId)
   const { data: history, isLoading: historyLoading } = useWorkflowHistory(workflowId)
@@ -257,9 +260,79 @@ export default function WorkflowDetailPage() {
         </div>
       </div>
 
+      {/* Error Summary — shown when workflow has failure info */}
+      {(workflow.failure?.message || (history?.events ?? []).some(e => /fail/i.test(e.eventType))) && (() => {
+        const errorEvents = (history?.events ?? []).filter(e => /fail/i.test(e.eventType))
+        const causeMsg = workflow.failure?.cause?.message
+        const showCause = causeMsg && causeMsg !== workflow.failure?.message
+        return (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+              <h2 className="text-lg font-semibold text-red-400">Workflow Error</h2>
+            </div>
+
+            {workflow.failure?.message && (
+              <div className="mb-3">
+                <p className="text-sm text-muted-foreground mb-1">Message</p>
+                <p className="text-sm text-red-300 font-mono break-all">{workflow.failure.message}</p>
+              </div>
+            )}
+
+            {showCause && (
+              <div className="mb-3">
+                <p className="text-sm text-muted-foreground mb-1">Cause</p>
+                <p className="text-sm text-red-300 font-mono break-all">{causeMsg}</p>
+              </div>
+            )}
+
+            {workflow.failure?.source && (
+              <div className="mb-3">
+                <p className="text-sm text-muted-foreground mb-1">Source</p>
+                <p className="text-sm text-red-300 font-mono">{workflow.failure.source}</p>
+              </div>
+            )}
+
+            {errorEvents.length > 0 && (
+              <div className="mb-3">
+                <p className="text-sm text-red-400">
+                  {errorEvents.length} failed event{errorEvents.length !== 1 ? 's' : ''} in history
+                </p>
+              </div>
+            )}
+
+            {workflow.failure?.stackTrace && (
+              <div>
+                <button
+                  onClick={() => setShowStackTrace(prev => !prev)}
+                  className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 transition-colors"
+                >
+                  {showStackTrace ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                  {showStackTrace ? 'Hide' : 'Show'} stack trace
+                </button>
+                {showStackTrace && (
+                  <pre className="mt-2 bg-background/50 border border-red-500/20 rounded-lg p-4 text-xs text-red-300 font-mono overflow-auto max-h-64 whitespace-pre-wrap break-all">
+                    {workflow.failure.stackTrace}
+                  </pre>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Investigation Progress — only for single-repo investigation workflows */}
       {isSingleInvestigation && (
         <InvestigationProgress workflowId={workflow.workflowId} isRunning={isRunning} />
+      )}
+
+      {/* Activity Gantt — shows all activities with timeline bars */}
+      {history?.events && history.events.length > 0 && (
+        <ActivityGantt events={history.events} isRunning={isRunning} />
       )}
 
       {/* Input/Output */}
@@ -280,13 +353,41 @@ export default function WorkflowDetailPage() {
 
       {/* Event History */}
       <div className="bg-card rounded-lg border border-border p-6">
-        <h2 className="text-lg font-semibold mb-4">Event History</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Event History</h2>
+          {(() => {
+            const errorCount = (history?.events ?? []).filter(e => /fail/i.test(e.eventType)).length
+            return errorCount > 0 ? (
+              <button
+                onClick={() => setShowErrorsOnly(prev => !prev)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors',
+                  showErrorsOnly
+                    ? 'bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30'
+                    : 'bg-accent text-muted-foreground border-border hover:text-accent-foreground'
+                )}
+              >
+                <Filter className="h-3.5 w-3.5" />
+                Show errors only
+                <span className={cn(
+                  'ml-1 px-1.5 py-0.5 rounded-full text-xs font-medium',
+                  showErrorsOnly ? 'bg-red-500/30 text-red-300' : 'bg-muted text-muted-foreground'
+                )}>
+                  {errorCount}
+                </span>
+              </button>
+            ) : null
+          })()}
+        </div>
         <div className="space-y-2">
-          {history?.events.map((event, index) => (
+          {(showErrorsOnly
+            ? (history?.events ?? []).filter(e => /fail/i.test(e.eventType))
+            : (history?.events ?? [])
+          ).map((event, index, arr) => (
             <TimelineEvent
               key={event.eventId}
               event={event}
-              isLast={index === history.events.length - 1}
+              isLast={index === arr.length - 1}
             />
           ))}
         </div>
