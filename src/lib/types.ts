@@ -35,6 +35,26 @@ export interface WorkflowEvent {
   details?: any
 }
 
+export interface EcsServiceInfo {
+  name: string
+  displayName: string
+  desired: number
+  running: number
+  pending: number
+  status: string
+  cpu: number
+  memory: number
+  arch: string
+  lastDeployment?: string
+  deploymentStatus?: string
+}
+
+export interface InfrastructureData {
+  services: EcsServiceInfo[]
+  source: 'ecs' | 'unavailable' | 'error'
+  error?: string
+}
+
 export interface Repository {
   name: string
   url: string
